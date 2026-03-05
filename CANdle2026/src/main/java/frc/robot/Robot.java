@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import com.ctre.phoenix6.configs.CANdleConfiguration;
 import com.ctre.phoenix6.controls.*;
 import com.ctre.phoenix6.hardware.CANdle;
+import com.ctre.phoenix6.signals.AnimationDirectionValue;
 import com.ctre.phoenix6.signals.RGBWColor;
 import com.ctre.phoenix6.signals.StatusLedWhenActiveValue;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -25,11 +26,12 @@ public class Robot extends TimedRobot {
   private Command m_autonomousCommand;
 
   private final RobotContainer m_robotContainer;
+  private final int STARTING_INDEX = 0;
+  private final int ENDING_INDEX = 7;
   private final CANdle candle = new CANdle(4, "rio"); //Adjust ID
   private static final RGBWColor kBlue = RGBWColor.fromHex("#04D9FF").orElseThrow();
   private static final RGBWColor kRed = RGBWColor.fromHex("#FC1723").orElseThrow();
-
-  private AnimationType state1 = AnimationType.None;
+  private AnimationType state1 = AnimationType.Rainbow;
 
   private final SendableChooser<AnimationType> ledModeChooser1 = new SendableChooser<AnimationType>();
   
@@ -37,7 +39,10 @@ public class Robot extends TimedRobot {
         None,
         Rainbow,
         SolidBlue,
-        SolidRed
+        SolidRed,
+        Fire,
+        Twinkle,
+        TestColor
   }
 
   /**
@@ -54,33 +59,71 @@ public class Robot extends TimedRobot {
     candle.getConfigurator().apply(cfg);
 
 
-    ledModeChooser1.setDefaultOption("None", AnimationType.None);
-    ledModeChooser1.addOption("Rainbow", AnimationType.Rainbow);
+    ledModeChooser1.setDefaultOption("Rainbow", AnimationType.Rainbow);
+    ledModeChooser1.addOption("None", AnimationType.None);
     ledModeChooser1.addOption("SolidBlue", AnimationType.SolidBlue);
     ledModeChooser1.addOption("SolidRed", AnimationType.SolidRed);
-
-    SmartDashboard.putData("Current State", ledModeChooser1);
+    ledModeChooser1.addOption("Fire", AnimationType.Fire);
+    ledModeChooser1.addOption("Twinkle", AnimationType.Twinkle);
+    ledModeChooser1.addOption("TestColor", AnimationType.TestColor);
   }
   public void setLedMode(AnimationType newMode) {
+    updateLogging("Enter all fields", null);
+    SmartDashboard.putData("Current State", ledModeChooser1);
     if (state1 != newMode) {
         state1 = newMode; 
         switch(state1) {
-            default:
-            case Rainbow:
-                candle.setControl(new RainbowAnimation(0, 7).withSlot(0));
-                
-            case SolidBlue:
-                candle.setControl(new SolidColor(0, 7).withColor(kBlue));
+          case SolidBlue:
+              candle.setControl(new SolidColor(STARTING_INDEX, ENDING_INDEX).withColor(kBlue));
+              updateLogging("Disable everything besides this animation", "SolidBlue");
+              break;
 
-            case SolidRed:
-                candle.setControl(new SolidColor(0, 7).withColor(kRed));
+          case SolidRed:
+              candle.setControl(new SolidColor(STARTING_INDEX, ENDING_INDEX).withColor(kRed));
+              updateLogging("Disable everything besides this animation", "SolidRed");
+              break;
+            
+          case Fire:
+              candle.setControl(new FireAnimation(STARTING_INDEX, ENDING_INDEX));
+              updateLogging("Disable everything besides this animation", "Fire");
+              break;
 
-            case None:
-                candle.setControl(new SolidColor(0, 7).withColor(new RGBWColor(0, 0, 0, 0)));
+          case TestColor:
+              candle.setControl(new SolidColor(STARTING_INDEX, ENDING_INDEX).withColor(new RGBWColor(100, 0, 0, 0)));
+              updateLogging("Disable everything besides this animation", "TestColor");
+              break;
 
-        }
+          case None:
+              candle.setControl(new SolidColor(STARTING_INDEX, ENDING_INDEX).withColor(new RGBWColor(0, 0, 0, 0)));
+              updateLogging("Disable everything besides this animation", "None");
+              break;
+
+          case Rainbow:
+          default:
+              candle.setControl(new RainbowAnimation(STARTING_INDEX, ENDING_INDEX).withSlot(0)
+              .withDirection(AnimationDirectionValue.Backward));
+              updateLogging("Disable everything besides this animation", "Rainbow");
+              break;
+          }
+
     }
-    
+    return; 
+}
+public void updateLogging(String task, String animation) {
+  String[] animationlist = {"Rainbow", "SolidBlue", "SolidRed", "Fire", "TestColor", "None"};
+  if (task.equals("Disable everything besides this animation")) {
+      for (String color : animationlist) {
+          if (!(color.equals(animation))) {
+            SmartDashboard.putBoolean(color, false);
+          }
+      }
+      SmartDashboard.putBoolean(animation, true);
+  }
+  else{
+    for (String color : animationlist) {
+      SmartDashboard.putBoolean(color, false);
+    }
+  }
 }
 
 
@@ -104,17 +147,19 @@ public class Robot extends TimedRobot {
     if (state1 != selectedMode) {
         setLedMode(selectedMode);
     }
-    
-    
-    
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+    //effectActive = false;
+    //setLedMode(AnimationType.None);
+    //setLedMode(AnimationType.None);
+  }
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+  }
 
   /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
@@ -140,12 +185,16 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
-    setLedMode(AnimationType.Rainbow);
+    //if (!effectActive) {
+      //setLedMode(AnimationType.Fire);
+      //effectActive = true;
+    //}
+    //setLedMode(AnimationType.TestColor);
   }
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {setLedMode(AnimationType.TestColor);}
 
   @Override
   public void testInit() {
