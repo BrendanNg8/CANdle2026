@@ -5,8 +5,12 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.TimedRobot;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+
 import com.ctre.phoenix6.configs.CANdleConfiguration;
 import com.ctre.phoenix6.controls.*;
 import com.ctre.phoenix6.hardware.CANdle;
@@ -32,6 +36,7 @@ public class Robot extends TimedRobot {
   private static final RGBWColor kBlue = RGBWColor.fromHex("#04D9FF").orElseThrow();
   private static final RGBWColor kRed = RGBWColor.fromHex("#FC1723").orElseThrow();
   private AnimationType state1 = AnimationType.Rainbow;
+  private CommandXboxController controller = new CommandXboxController(0);
 
   private final SendableChooser<AnimationType> ledModeChooser1 = new SendableChooser<AnimationType>();
   
@@ -68,11 +73,13 @@ public class Robot extends TimedRobot {
     ledModeChooser1.addOption("TestColor", AnimationType.TestColor);
   }
   public void setLedMode(AnimationType newMode) {
+    candle.setControl(new SolidColor(STARTING_INDEX, ENDING_INDEX).withColor(new RGBWColor(0, 0, 0, 0)));
     updateLogging("Enter all fields", null);
     SmartDashboard.putData("Current State", ledModeChooser1);
     if (state1 != newMode) {
         state1 = newMode; 
         switch(state1) {
+          
           case SolidBlue:
               candle.setControl(new SolidColor(STARTING_INDEX, ENDING_INDEX).withColor(kBlue));
               updateLogging("Disable everything besides this animation", "SolidBlue");
@@ -99,11 +106,12 @@ public class Robot extends TimedRobot {
               break;
 
           case Rainbow:
-          default:
               candle.setControl(new RainbowAnimation(STARTING_INDEX, ENDING_INDEX).withSlot(0)
               .withDirection(AnimationDirectionValue.Backward));
               updateLogging("Disable everything besides this animation", "Rainbow");
               break;
+          default:
+              SmartDashboard.putBoolean("NOT WORKING", false);
           }
 
     }
@@ -127,6 +135,7 @@ public void updateLogging(String task, String animation) {
 }
 
 
+
   /**
    * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
    * that you want ran during disabled, autonomous, teleoperated and test.
@@ -147,6 +156,10 @@ public void updateLogging(String task, String animation) {
     if (state1 != selectedMode) {
         setLedMode(selectedMode);
     }
+    
+    controller.a().onTrue(Commands.runOnce(() -> setLedMode(AnimationType.TestColor)));
+    controller.x().onTrue(Commands.runOnce(() -> setLedMode(AnimationType.Rainbow)));
+    controller.y().onTrue(Commands.runOnce(() -> setLedMode(AnimationType.None)));
   }
 
   /** This function is called once each time the robot enters Disabled mode. */
@@ -194,7 +207,9 @@ public void updateLogging(String task, String animation) {
 
   /** This function is called periodically during operator control. */
   @Override
-  public void teleopPeriodic() {setLedMode(AnimationType.TestColor);}
+  public void teleopPeriodic() {
+    //setLedMode(AnimationType.TestColor);
+  }
 
   @Override
   public void testInit() {
