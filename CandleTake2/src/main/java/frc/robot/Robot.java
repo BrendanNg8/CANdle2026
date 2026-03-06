@@ -5,6 +5,8 @@
 package frc.robot;
 
 import com.ctre.phoenix6.configs.CANdleConfiguration;
+import com.ctre.phoenix6.controls.EmptyAnimation;
+import com.ctre.phoenix6.controls.RainbowAnimation;
 import com.ctre.phoenix6.controls.SolidColor;
 import com.ctre.phoenix6.hardware.CANdle;
 import com.ctre.phoenix6.signals.RGBWColor;
@@ -14,6 +16,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
 /**
  * The methods in this class are called automatically corresponding to each mode, as described in
@@ -30,7 +33,6 @@ public class Robot extends TimedRobot {
   SendableChooser<AnimationTypes> colorSelectionList;
   final static int startingIndex = 0;
   static final int endingIndex = 7;
-
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -49,22 +51,24 @@ public class Robot extends TimedRobot {
     colorSelectionList.setDefaultOption("None", AnimationTypes.None);
     colorSelectionList.addOption("Red", AnimationTypes.Red);
     colorSelectionList.addOption("Blue", AnimationTypes.Blue);
+    colorSelectionList.addOption("Rainbow", AnimationTypes.Rainbow);
   }
 
   private enum AnimationTypes {
       Red,
       Blue,
-      None
+      None,
+      Rainbow
   }
   private void startLogging() {
-      String[] animationList = {"Red", "Blue", "None"};
+      String[] animationList = {"Red", "Blue", "None", "Rainbow"};
       SmartDashboard.putData("Color List", colorSelectionList);
       for (String animation : animationList) {
           SmartDashboard.putBoolean(animation, false); //Put all the fields in
       }
   }
   private void updateSpecificLogging(String state) {
-      String[] animationList = {"Red", "Blue", "None"};
+      String[] animationList = {"Red", "Blue", "None", "Rainbow"};
       SmartDashboard.putBoolean(state, true);
       for (String animation : animationList) {
         if (!(animation.equals(state))) { //If the animation isn't the animation you sent in
@@ -74,22 +78,34 @@ public class Robot extends TimedRobot {
 
   }
   private void setEffect(AnimationTypes requestedState) {
+    EmptyAnimation clearAnimation = new EmptyAnimation(0);
     if (currentState != requestedState) {
+      
       currentState = requestedState;
       switch(currentState) {
       case Red:
+        candle.setControl(clearAnimation);
         updateSpecificLogging("Red");
         candle.setControl(new SolidColor(startingIndex, endingIndex)
         .withColor(new RGBWColor(360, 0, 0, 0)));
         break;
 
       case Blue:
+        candle.setControl(clearAnimation);
         updateSpecificLogging("Blue");
         candle.setControl(new SolidColor(startingIndex, endingIndex)
         .withColor(new RGBWColor(0, 0, 360, 0)));
         break;
+      
 
+      case Rainbow:
+        updateSpecificLogging("Rainbow");
+        candle.setControl(new RainbowAnimation(startingIndex, endingIndex));
+        break;
+      
       default:
+      case None:
+        candle.setControl(clearAnimation);
         updateSpecificLogging("None");
         candle.setControl(new SolidColor(startingIndex, endingIndex)
         .withColor(new RGBWColor(0, 0, 0, 0))); 
@@ -99,13 +115,7 @@ public class Robot extends TimedRobot {
     return;
   }
 
-  /**
-   * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics
-   * that you want ran during disabled, autonomous, teleoperated and test.
-   *
-   * <p>This runs after the mode specific periodic functions, but before LiveWindow and
-   * SmartDashboard integrated updating.
-   */
+  //_________________________________________
   @Override
   public void robotPeriodic() {
     // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
@@ -118,15 +128,10 @@ public class Robot extends TimedRobot {
       setEffect(selectedEffect);
     }
   }
-
-  /** This function is called once each time the robot enters Disabled mode. */
   @Override
   public void disabledInit() {}
-
   @Override
   public void disabledPeriodic() {}
-
-  /** This autonomous runs the autonomous command selected by your {@link RobotContainer} class. */
   @Override
   public void autonomousInit() {
     m_autonomousCommand = m_robotContainer.getAutonomousCommand();
@@ -136,11 +141,8 @@ public class Robot extends TimedRobot {
       CommandScheduler.getInstance().schedule(m_autonomousCommand);
     }
   }
-
-  /** This function is called periodically during autonomous. */
   @Override
   public void autonomousPeriodic() {}
-
   @Override
   public void teleopInit() {
     // This makes sure that the autonomous stops running when
@@ -150,29 +152,20 @@ public class Robot extends TimedRobot {
     if (m_autonomousCommand != null) {
       m_autonomousCommand.cancel();
     }
+    setEffect(AnimationTypes.None);
     startLogging();
-    
   }
-
-  /** This function is called periodically during operator control. */
   @Override
   public void teleopPeriodic() {}
-
   @Override
   public void testInit() {
     // Cancels all running commands at the start of test mode.
     CommandScheduler.getInstance().cancelAll();
   }
-
-  /** This function is called periodically during test mode. */
   @Override
   public void testPeriodic() {}
-
-  /** This function is called once when the robot is first started up. */
   @Override
   public void simulationInit() {}
-
-  /** This function is called periodically whilst in simulation. */
   @Override
   public void simulationPeriodic() {}
 }
