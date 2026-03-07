@@ -5,8 +5,11 @@
 package frc.robot;
 
 import com.ctre.phoenix6.configs.CANdleConfiguration;
+import com.ctre.phoenix6.controls.ColorFlowAnimation;
 import com.ctre.phoenix6.controls.EmptyAnimation;
+import com.ctre.phoenix6.controls.LarsonAnimation;
 import com.ctre.phoenix6.controls.RainbowAnimation;
+import com.ctre.phoenix6.controls.RgbFadeAnimation;
 import com.ctre.phoenix6.controls.SolidColor;
 import com.ctre.phoenix6.hardware.CANdle;
 import com.ctre.phoenix6.signals.RGBWColor;
@@ -35,6 +38,8 @@ public class Robot extends TimedRobot {
   final static int startingIndex = 0; //Candle starting idx (first light)
   final static int endingIndex = 7; //Candle ending idx (last light)
   private final CommandXboxController controller = new CommandXboxController(0);
+  private final RGBWColor kYellow = RGBWColor.fromHex("#F6E2AD").orElseThrow();
+  private final RGBWColor kPink = RGBWColor.fromHex("#ed80e9").orElseThrow();
 
   /**
    * This function is run when the robot is first started up and should be used for any
@@ -48,33 +53,39 @@ public class Robot extends TimedRobot {
     colorSelectionList = new SendableChooser<AnimationTypes>(); //A selection list in shuffleboard 
 
     config = new CANdleConfiguration(); //CANdle config -> Add more settings if using LED Strips
-    config.LED.BrightnessScalar = 0.5;
+    config.LED.BrightnessScalar = 0.1;
     candle.getConfigurator().apply(config); //Apply config to the CANdle object
 
     //Add options to selection list by passing in the type of data the list takes in (AnimationTypes)
     colorSelectionList.setDefaultOption("None", AnimationTypes.None); //The option the list defaults to
-    colorSelectionList.addOption("Red", AnimationTypes.Red); 
+    colorSelectionList.addOption("Red", AnimationTypes.Red);
     colorSelectionList.addOption("Blue", AnimationTypes.Blue);
     colorSelectionList.addOption("Rainbow", AnimationTypes.Rainbow);
+    colorSelectionList.addOption("ColorFlow", AnimationTypes.ColorFlow);
+    colorSelectionList.addOption("RGBFlow", AnimationTypes.RGBFade);
+    colorSelectionList.addOption("Larson", AnimationTypes.Larson);
   }
-  //Enum -> Red, Blue, None, Rainbow
-  //AFTER TESTING RAINBOW AND EVERYTHING WORKS -> ADD RGBFLOW + COLORFLOW WITH SLOT 0
+  //Enum -> Red, Blue, None, Rainbow, ColorFlow, RGBFade
   private enum AnimationTypes {
       Red,
       Blue,
       None,
-      Rainbow
+      Rainbow,
+      ColorFlow,
+      RGBFade,
+      Larson
   }
   //________________________________________
   private void startLogging() {
-      String[] animationList = {"Red", "Blue", "None", "Rainbow"};
+    SmartDashboard.putBoolean("Started Logging?", true);
+      String[] animationList = {"Red", "Blue", "None", "Rainbow", "ColorFlow", "RGBFade", "Larson"};
       SmartDashboard.putData("Color List", colorSelectionList);
       for (String animation : animationList) {
           SmartDashboard.putBoolean(animation, false); //Put all the fields in
       }
   }
   private void updateSpecificLogging(String state) {
-      String[] animationList = {"Red", "Blue", "None", "Rainbow"};
+      String[] animationList = {"Red", "Blue", "None", "Rainbow", "ColorFlow", "RGBFade", "Larson"};
       SmartDashboard.putBoolean(state, true);
       for (String animation : animationList) {
         if (!(animation.equals(state))) { //If the animation isn't the animation you sent in
@@ -84,7 +95,7 @@ public class Robot extends TimedRobot {
 
   }
   private void setEffect(AnimationTypes requestedState) {
-    EmptyAnimation clearAnimation = new EmptyAnimation(0);
+    EmptyAnimation clearAnimation = new EmptyAnimation(startingIndex);
     if (currentState != requestedState) {
       
       currentState = requestedState;
@@ -107,6 +118,23 @@ public class Robot extends TimedRobot {
       case Rainbow:
         updateSpecificLogging("Rainbow");
         candle.setControl(new RainbowAnimation(startingIndex, endingIndex));
+        break;
+      
+      case ColorFlow:
+        updateSpecificLogging("ColorFlow");
+        candle.setControl(new ColorFlowAnimation(startingIndex, endingIndex)
+        .withSlot(startingIndex)
+        .withColor(kYellow));
+        break;
+      
+      case RGBFade:
+        updateSpecificLogging("RGBFade");
+        candle.setControl(new RgbFadeAnimation(startingIndex, endingIndex).withSlot(startingIndex));
+        break;
+
+      case Larson:
+        updateSpecificLogging("Larson");
+        candle.setControl(new LarsonAnimation(startingIndex, endingIndex).withSlot(startingIndex).withColor(kPink));
         break;
       
       default:
