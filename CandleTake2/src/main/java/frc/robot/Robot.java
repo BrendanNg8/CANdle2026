@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 
 /**
@@ -31,8 +32,10 @@ public class Robot extends TimedRobot {
   private CANdleConfiguration config;
   AnimationTypes currentState;
   SendableChooser<AnimationTypes> colorSelectionList;
-  final static int startingIndex = 0;
-  static final int endingIndex = 7;
+  final static int startingIndex = 0; //Candle starting idx (first light)
+  final static int endingIndex = 7; //Candle ending idx (last light)
+  private final CommandXboxController controller = new CommandXboxController(0);
+
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -41,25 +44,28 @@ public class Robot extends TimedRobot {
     // Instantiate our RobotContainer.  This will perform all our button bindings, and put our
     // autonomous chooser on the dashboard.
     m_robotContainer = new RobotContainer();
-    candle = new CANdle(4, "rio");
-    colorSelectionList = new SendableChooser<AnimationTypes>();
+    candle = new CANdle(4, "rio"); // CANdle object
+    colorSelectionList = new SendableChooser<AnimationTypes>(); //A selection list in shuffleboard 
 
-    config = new CANdleConfiguration();
+    config = new CANdleConfiguration(); //CANdle config -> Add more settings if using LED Strips
     config.LED.BrightnessScalar = 0.5;
-    candle.getConfigurator().apply(config);
+    candle.getConfigurator().apply(config); //Apply config to the CANdle object
 
-    colorSelectionList.setDefaultOption("None", AnimationTypes.None);
-    colorSelectionList.addOption("Red", AnimationTypes.Red);
+    //Add options to selection list by passing in the type of data the list takes in (AnimationTypes)
+    colorSelectionList.setDefaultOption("None", AnimationTypes.None); //The option the list defaults to
+    colorSelectionList.addOption("Red", AnimationTypes.Red); 
     colorSelectionList.addOption("Blue", AnimationTypes.Blue);
     colorSelectionList.addOption("Rainbow", AnimationTypes.Rainbow);
   }
-
+  //Enum -> Red, Blue, None, Rainbow
+  //AFTER TESTING RAINBOW AND EVERYTHING WORKS -> ADD RGBFLOW + COLORFLOW WITH SLOT 0
   private enum AnimationTypes {
       Red,
       Blue,
       None,
       Rainbow
   }
+  //________________________________________
   private void startLogging() {
       String[] animationList = {"Red", "Blue", "None", "Rainbow"};
       SmartDashboard.putData("Color List", colorSelectionList);
@@ -114,9 +120,8 @@ public class Robot extends TimedRobot {
     }  
     return;
   }
-
   //_________________________________________
-  @Override
+  @Override //Get list selection, compare to current, set effect if different
   public void robotPeriodic() {
     // Runs the Scheduler.  This is responsible for polling buttons, adding newly-scheduled
     // commands, running already-scheduled commands, removing finished or interrupted commands,
@@ -127,6 +132,14 @@ public class Robot extends TimedRobot {
     if (selectedEffect != currentState) {
       setEffect(selectedEffect);
     }
+    controller.b().onTrue(Commands.sequence(
+      Commands.runOnce(() -> setEffect(AnimationTypes.Red)),
+      Commands.waitSeconds(1),
+      Commands.runOnce(() -> setEffect(AnimationTypes.Blue)),
+      Commands.waitSeconds(1),
+      Commands.runOnce(() -> setEffect(AnimationTypes.Rainbow)),
+      Commands.waitSeconds(1),
+      Commands.runOnce(() -> setEffect(AnimationTypes.None))));
   }
   @Override
   public void disabledInit() {}
@@ -143,7 +156,7 @@ public class Robot extends TimedRobot {
   }
   @Override
   public void autonomousPeriodic() {}
-  @Override
+  @Override //Set effect to AnimationTypes.None, startLogging()
   public void teleopInit() {
     // This makes sure that the autonomous stops running when
     // teleop starts running. If you want the autonomous to
